@@ -46,7 +46,6 @@ class MemberSerializer(serializers.ModelSerializer):
             nationality = data.get('nationality', self.instance.nationality)
             job = data.get('job', self.instance.job)
 
-            # Check if any field is missing or has a default placeholder value
             needs_completion = (
                     not name or
                     not cin or
@@ -71,10 +70,6 @@ class MemberSerializer(serializers.ModelSerializer):
 
         return data
 
-
-# ============================================================
-# NEW SERIALIZERS - Project Management
-# ============================================================
 
 class TaskSerializer(serializers.ModelSerializer):
     """
@@ -139,7 +134,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     reports = ProjectReportSerializer(many=True, read_only=True)
     responsible_name = serializers.CharField(source='responsible.name', read_only=True)
 
-    # Count fields for quick stats
     task_count = serializers.SerializerMethodField()
     completed_task_count = serializers.SerializerMethodField()
     completion_percentage = serializers.SerializerMethodField()
