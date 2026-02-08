@@ -193,7 +193,6 @@ class ProjectViewset(viewsets.ViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Create PDF with FPDF
             class PDF(FPDF):
                 def header(self):
                     self.set_font('Arial', 'B', 16)
@@ -219,25 +218,21 @@ class ProjectViewset(viewsets.ViewSet):
                     self.multi_cell(0, 5, body)
                     self.ln()
 
-            # Create PDF instance
             pdf = PDF()
             pdf.add_page()
             pdf.set_auto_page_break(auto=True, margin=15)
 
-            # Title
             pdf.set_font('Arial', 'B', 20)
             pdf.set_text_color(25, 118, 210)
             pdf.cell(0, 10, project.name, 0, 1, 'C')
             pdf.ln(10)
 
-            # Project Information Header
             pdf.set_font('Arial', 'B', 11)
             pdf.set_fill_color(25, 118, 210)
             pdf.set_text_color(255, 255, 255)
             pdf.cell(0, 10, 'Informations du Projet', 0, 1, 'L', True)
             pdf.ln(2)
 
-            # Table data
             pdf.set_font('Arial', '', 10)
             pdf.set_text_color(0, 0, 0)
 
@@ -259,36 +254,29 @@ class ProjectViewset(viewsets.ViewSet):
 
             pdf.ln(10)
 
-            # Description section
             if project.description:
                 pdf.chapter_title('Description du projet')
                 pdf.chapter_body(project.description)
 
-            # Summary section
             if summary and summary != f"Rapport pour {project.name}":
                 pdf.chapter_title('Resume')
                 pdf.chapter_body(summary)
 
-            # Meeting notes section
             if meeting_notes:
                 pdf.chapter_title('Notes de reunion')
                 pdf.chapter_body(meeting_notes)
 
-            # Generation info
             pdf.ln(10)
             pdf.set_font('Arial', 'I', 9)
             pdf.set_text_color(100, 100, 100)
             pdf.cell(0, 5, f"Rapport genere par: {current_member.name}", 0, 1, 'L')
             pdf.cell(0, 5, f"Date de generation: {timezone.now().strftime('%d/%m/%Y a %H:%M')}", 0, 1, 'L')
 
-            # ✅ FIXED: Generate PDF content correctly
             pdf_content = bytes(pdf.output())
 
-            # Verify PDF was created
             if len(pdf_content) < 100:
                 raise Exception("PDF generation failed - file too small")
 
-            # Create the report object
             report = ProjectReport.objects.create(
                 project=project,
                 generated_by=current_member,
@@ -297,7 +285,6 @@ class ProjectViewset(viewsets.ViewSet):
                 is_final_report=False
             )
 
-            # Save PDF to the report
             filename = f"rapport_{project.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
             report.pdf_file.save(filename, ContentFile(pdf_content), save=True)
 
@@ -371,10 +358,6 @@ class MemberViewset(viewsets.ViewSet):
         member.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-# ============================================================
-# NEW VIEWSETS - Project Management
-# ============================================================
 
 class TaskViewSet(viewsets.ModelViewSet):
     """
