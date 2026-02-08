@@ -17,7 +17,6 @@ def generate_foreign_donation_journal_publication(report):
     logger.info(f"Starting journal publication generation for report {report.id}")
 
     try:
-        # Get transaction and donor information
         transaction = report.transaction
         if not transaction:
             msg = f"Transaction not found for report {report.id}"
@@ -30,27 +29,22 @@ def generate_foreign_donation_journal_publication(report):
             logger.error(msg)
             raise ValueError(msg)
 
-        # Get association data
         association = None
         if hasattr(transaction, 'association') and transaction.association:
             association = transaction.association
         elif hasattr(transaction, 'project') and transaction.project and hasattr(transaction.project, 'association'):
             association = transaction.project.association
 
-        # Format donor and transaction information
         donor_name = donor.name if donor and hasattr(donor, 'name') else "Non spécifié"
-        # Anonymize donor if requested
         if donor.is_anonymous:
             donor_name = "Donateur Anonyme"
 
-        # Format transaction amount safely
         try:
             transaction_amount = f"{transaction.amount} TND" if hasattr(transaction, 'amount') else "Non spécifié"
         except Exception as e:
             logger.warning(f"Error formatting transaction amount: {e}")
             transaction_amount = "Non spécifié"
 
-        # Format transaction date safely
         try:
             transaction_date = transaction.date.strftime("%d/%m/%Y") if hasattr(transaction,
                                                                                 'date') and transaction.date else "Non spécifié"
@@ -58,7 +52,6 @@ def generate_foreign_donation_journal_publication(report):
             logger.warning(f"Error formatting transaction date: {e}")
             transaction_date = "Non spécifié"
 
-        # Get association details or use defaults
         if association:
             association_name = association.name if hasattr(association, 'name') else "Association"
             association_president = (
@@ -69,7 +62,6 @@ def generate_foreign_donation_journal_publication(report):
             association_name = "Votre Association"
             association_president = "Le Président de l'Association"
 
-        # Generate publication text
         publication_text = f"""
 AVIS DE DON D'ORIGINE ETRANGERE
 
@@ -83,7 +75,6 @@ Pour {association_name}
 {association_president}
 """
 
-        # Save the generated text to the report
         report.journal_publication_text = publication_text
         report.save(update_fields=['journal_publication_text'])
 
@@ -95,7 +86,6 @@ Pour {association_name}
         logger.error(f"Error generating journal publication: {str(e)}")
         logger.error(traceback.format_exc())
 
-        # Add error info to report
         if hasattr(report, 'notes'):
             report.notes = (report.notes or '') + f"\nError generating journal publication: {str(e)}"
             report.save(update_fields=['notes'])
@@ -103,7 +93,6 @@ Pour {association_name}
         raise
 
 
-# Add this to your utils.py file after the existing get_financial_statistics function
 
 def get_financial_statistics(start_date, end_date, association=None):
     """
@@ -117,14 +106,12 @@ def get_financial_statistics(start_date, end_date, association=None):
     logger = logging.getLogger(__name__)
     logger.info(f"Calculating financial statistics for period {start_date} to {end_date}")
 
-    # Base query for verified transactions in the date range
     transaction_query = {
         'status': 'verified',
         'date__gte': start_date,
         'date__lte': end_date,
     }
 
-    # Add association filter if provided
     if association:
         # Include both direct association and project association
         transactions = Transaction.objects.filter(
@@ -135,7 +122,6 @@ def get_financial_statistics(start_date, end_date, association=None):
     else:
         transactions = Transaction.objects.filter(**transaction_query)
 
-    # Calculate total income and expenses
     income_transactions = transactions.filter(transaction_type='income')
     expense_transactions = transactions.filter(transaction_type='expense')
 
@@ -143,20 +129,16 @@ def get_financial_statistics(start_date, end_date, association=None):
     total_expenses = expense_transactions.aggregate(total=Sum('amount'))['total'] or Decimal('0')
     net_balance = total_income - total_expenses
 
-    # Check for membership fee transactions specifically
     membership_transactions = income_transactions.filter(category='membership_fee')
     membership_count = membership_transactions.count()
     logger.info(f"Found {membership_count} membership fee transactions in date range")
 
-    # Debug all income transaction categories
     categories_debug = income_transactions.values_list('category', flat=True).distinct()
     logger.info(f"Income categories found: {list(categories_debug)}")
 
-    # Calculate statistics by category
     income_by_category = {}
     expenses_by_category = {}
 
-    # Income categories
     categories = transactions.filter(transaction_type='income').values_list('category', flat=True).distinct()
     for category in categories:
         category_total = transactions.filter(
@@ -166,7 +148,6 @@ def get_financial_statistics(start_date, end_date, association=None):
         income_by_category[category] = category_total
         logger.info(f"Category '{category}' total: {category_total}")
 
-    # Expense categories
     categories = transactions.filter(transaction_type='expense').values_list('category', flat=True).distinct()
     for category in categories:
         category_total = transactions.filter(
@@ -175,13 +156,11 @@ def get_financial_statistics(start_date, end_date, association=None):
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         expenses_by_category[category] = category_total
 
-    # Calculate total donations
     total_donations = transactions.filter(
         transaction_type='income',
         category='donation'
     ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
-    # Calculate membership fees with explicit debugging
     total_membership_fees = transactions.filter(
         transaction_type='income',
         category='membership_fee'
@@ -189,7 +168,6 @@ def get_financial_statistics(start_date, end_date, association=None):
 
     logger.info(f"Calculated total_membership_fees: {total_membership_fees}")
 
-    # Check for alternate spellings or categories that might contain membership fees
     alternate_categories = ['membership', 'cotisation', 'cotisations', 'member_fee', 'member fee']
     for alt_category in alternate_categories:
         alt_total = transactions.filter(
@@ -199,13 +177,11 @@ def get_financial_statistics(start_date, end_date, association=None):
         if alt_total > 0:
             logger.info(f"Found potential membership fees in alternate category '{alt_category}': {alt_total}")
 
-    # Calculate total project expenses
     total_project_expenses = transactions.filter(
         transaction_type='expense',
         category='project_expense'
     ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
-    # Get project budget utilization
     budget_query = BudgetAllocation.objects.all()
     if association:
         budget_query = budget_query.filter(
@@ -230,7 +206,6 @@ def get_financial_statistics(start_date, end_date, association=None):
             'period_expenses': float(period_expenses)
         })
 
-    # Get recent transactions
     recent_transactions = transactions.order_by('-date')[:10]
 
     stats = {
@@ -263,14 +238,12 @@ def export_transactions_to_csv(queryset, output_file=None):
     Returns:
         CSV content as string if output_file is None, otherwise None
     """
-    # Define fields to export
     fieldnames = [
         'id', 'transaction_type', 'category', 'amount',
         'description', 'date', 'project', 'donor',
         'reference_number', 'status'
     ]
 
-    # Create CSV buffer
     if output_file is None:
         output = io.StringIO()
     else:
@@ -279,7 +252,6 @@ def export_transactions_to_csv(queryset, output_file=None):
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
-    # Write data
     for transaction in queryset:
         writer.writerow({
             'id': transaction.id,
@@ -294,7 +266,6 @@ def export_transactions_to_csv(queryset, output_file=None):
             'status': transaction.get_status_display()
         })
 
-    # Return CSV content if no output file provided
     if output_file is None:
         return output.getvalue()
 
@@ -317,7 +288,6 @@ def generate_foreign_donation_letter(report):
         import io
         from django.core.files.base import ContentFile
 
-        # Get transaction and donor information
         transaction = report.transaction
         if not transaction:
             msg = f"Transaction not found for report {report.id}"
@@ -334,7 +304,6 @@ def generate_foreign_donation_letter(report):
 
         logger.info(f"Found donor: {donor.id}, name: {donor.name if hasattr(donor, 'name') else 'Unknown'}")
 
-        # Get association data from the transaction
         association = None
         if hasattr(transaction, 'association') and transaction.association:
             association = transaction.association
@@ -343,7 +312,6 @@ def generate_foreign_donation_letter(report):
             association = transaction.project.association
             logger.info(f"Found association from project: {association.id}")
 
-        # Set up document
         buffer = io.BytesIO()
         logger.info("Creating PDF document")
 
@@ -357,14 +325,12 @@ def generate_foreign_donation_letter(report):
         )
         elements = []
 
-        # Styles
         styles = getSampleStyleSheet()
         normal_style = styles['Normal']
         title_style = styles['Title']
         heading_style = styles['Heading1']
         subheading_style = styles['Heading2']
 
-        # Get association details or use defaults if not available
         if association:
             logger.info(
                 f"Processing association details for {association.name if hasattr(association, 'name') else 'Unknown'}")
@@ -391,7 +357,6 @@ def generate_foreign_donation_letter(report):
             association_email = ""
             president_name = "Association President"
 
-        # Add organization header/letterhead
         logger.info("Building letter content")
         elements.append(Paragraph(association_name, title_style))
         elements.append(Spacer(1, 0.5 * cm))
@@ -404,46 +369,38 @@ def generate_foreign_donation_letter(report):
             elements.append(Paragraph(f"Email: {association_email}", normal_style))
         elements.append(Spacer(1, 1 * cm))
 
-        # Date
         today = timezone.now().date().strftime("%d/%m/%Y")
         elements.append(Paragraph(f"Date: {today}", normal_style))
         elements.append(Spacer(1, 0.5 * cm))
 
-        # Recipient
         elements.append(Paragraph("À l'attention de Monsieur le Premier Ministre", heading_style))
         elements.append(Paragraph("Gouvernement de la République Tunisienne", normal_style))
         elements.append(Paragraph("Place du Gouvernement - La Kasbah", normal_style))
         elements.append(Paragraph("1020 Tunis", normal_style))
         elements.append(Spacer(1, 1 * cm))
 
-        # Subject
         elements.append(Paragraph("Objet: Déclaration de don d'origine étrangère", subheading_style))
         elements.append(Spacer(1, 0.5 * cm))
 
-        # Greeting
         elements.append(Paragraph("Monsieur le Premier Ministre,", normal_style))
         elements.append(Spacer(1, 0.5 * cm))
 
-        # Body
         letter_body = """
         Conformément aux dispositions légales régissant les associations en Tunisie, nous avons l'honneur de vous informer que notre association a reçu un don d'origine étrangère selon les détails suivants:
         """
         elements.append(Paragraph(letter_body, normal_style))
         elements.append(Spacer(1, 0.5 * cm))
 
-        # Safely get donor and transaction information
         logger.info("Adding transaction details to letter")
         donor_name = donor.name if donor and hasattr(donor, 'name') else "Non spécifié"
         donor_address = donor.address if donor and hasattr(donor, 'address') else "Non spécifié"
 
-        # Convert amount to string safely
         try:
             transaction_amount = f"{transaction.amount} TND" if hasattr(transaction, 'amount') else "Non spécifié"
         except Exception as e:
             logger.warning(f"Error formatting transaction amount: {e}")
             transaction_amount = "Non spécifié"
 
-        # Format date safely
         try:
             transaction_date = transaction.date.strftime("%d/%m/%Y") if hasattr(transaction,
                                                                                 'date') and transaction.date else "Non spécifié"
@@ -454,10 +411,8 @@ def generate_foreign_donation_letter(report):
         transaction_ref = transaction.reference_number or "Non spécifié"
         transaction_desc = transaction.description or "Non spécifié"
 
-        # Log data for debugging
         logger.info(f"Donor: {donor_name}, Amount: {transaction_amount}, Date: {transaction_date}")
 
-        # Donation details
         data = [
             ["Donateur:", donor_name],
             ["Pays d'origine:", donor_address],
@@ -467,7 +422,6 @@ def generate_foreign_donation_letter(report):
             ["Description:", transaction_desc]
         ]
 
-        # Create the table
         table = Table(data, colWidths=[4 * cm, 10 * cm])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
@@ -482,7 +436,6 @@ def generate_foreign_donation_letter(report):
         elements.append(table)
         elements.append(Spacer(1, 0.5 * cm))
 
-        # Additional information
         additional_info = """
         Nous confirmons que ces fonds seront utilisés conformément aux objectifs de notre association et à la législation en vigueur.
 
@@ -491,39 +444,31 @@ def generate_foreign_donation_letter(report):
         elements.append(Paragraph(additional_info, normal_style))
         elements.append(Spacer(1, 1 * cm))
 
-        # Closing
         elements.append(
             Paragraph("Veuillez agréer, Monsieur le Premier Ministre, l'expression de notre haute considération.",
                       normal_style))
         elements.append(Spacer(1, 1 * cm))
 
-        # Signature
         elements.append(Paragraph("Le Président de l'Association", normal_style))
         elements.append(Spacer(1, 2 * cm))
         elements.append(Paragraph("____________________", normal_style))
         elements.append(Paragraph(president_name, normal_style))
         elements.append(Paragraph("[Cachet de l'Association]", normal_style))
 
-        # Build PDF
         logger.info("Building PDF document")
         doc.build(elements)
 
-        # Create a filename with transaction ID and date
         filename = f"foreign_donation_letter_tx{transaction.id}_{timezone.now().strftime('%Y%m%d')}.pdf"
 
-        # Save the file to the model
         logger.info(f"Saving PDF file as {filename}")
 
-        # Check if the report already has a letter file
         if report.letter_file:
             logger.info(f"Report already has a letter file, deleting: {report.letter_file.name}")
-            # Delete the existing file to avoid accumulating unused files
             try:
                 report.letter_file.delete(save=False)
             except Exception as e:
                 logger.warning(f"Could not delete existing letter file: {e}")
 
-        # Save the new file
         report.letter_file.save(filename, ContentFile(buffer.getvalue()), save=False)
         report.letter_generated = True
         report.save()
@@ -536,7 +481,6 @@ def generate_foreign_donation_letter(report):
         logger.error(f"Error generating foreign donation letter: {str(e)}")
         logger.error(traceback.format_exc())
 
-        # Add error info to report
         if hasattr(report, 'notes'):
             report.notes = (report.notes or '') + f"\nError generating letter: {str(e)}"
             report.save(update_fields=['notes'])
