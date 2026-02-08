@@ -6,7 +6,6 @@ from users.models import AssociationAccount
 
 
 class Project(models.Model):
-    # ✅ ADDED: Priority choices for project importance
     PRIORITY_CHOICES = [
         ('low', 'Basse'),
         ('medium', 'Moyenne'),
@@ -21,7 +20,6 @@ class Project(models.Model):
     budget = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=100)
 
-    # ✅ ADDED: Priority field - to classify project importance
     priority = models.CharField(
         max_length=20,
         choices=PRIORITY_CHOICES,
@@ -29,7 +27,6 @@ class Project(models.Model):
         verbose_name="Priorité"
     )
 
-    # ✅ ADDED: Responsible field - links to Member who manages this project
     responsible = models.ForeignKey(
         'Member',
         on_delete=models.SET_NULL,
@@ -48,10 +45,8 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # ✅ NEW: Progress tracking
     progress_percentage = models.IntegerField(default=0, verbose_name="Pourcentage de progression")
 
-    # ✅ NEW: Completion dates
     actual_completion_date = models.DateField(null=True, blank=True, verbose_name="Date réelle de fin")
 
     def __str__(self):
@@ -160,10 +155,6 @@ class Member(models.Model):
         unique_together = ('name', 'association')
 
 
-# ============================================================
-# ✅ NEW MODELS BELOW - Project Management System
-# ============================================================
-
 class Task(models.Model):
     """
     WHY: Tasks are individual work items within a project
@@ -190,7 +181,7 @@ class Task(models.Model):
     # Links to existing Project model
     project = models.ForeignKey(
         Project,
-        on_delete=models.CASCADE,  # If project deleted, delete all its tasks
+        on_delete=models.CASCADE,  
         related_name='tasks',
         verbose_name="Projet"
     )
@@ -198,7 +189,7 @@ class Task(models.Model):
     # Links to existing Member model
     assigned_to = models.ForeignKey(
         Member,
-        on_delete=models.SET_NULL,  # If member deleted, task stays but becomes unassigned
+        on_delete=models.SET_NULL,  
         null=True,
         blank=True,
         related_name='assigned_tasks',
@@ -244,7 +235,6 @@ class ProjectPhase(models.Model):
     name = models.CharField(max_length=200, verbose_name="Nom de la phase")
     description = models.TextField(verbose_name="Description")
 
-    # Order field ensures phases execute in sequence (1, 2, 3...)
     order = models.IntegerField(verbose_name="Ordre", help_text="Ordre d'exécution de la phase")
 
     project = models.ForeignKey(
@@ -304,14 +294,11 @@ class ProjectReport(models.Model):
         verbose_name="Généré par"
     )
 
-    # Report content
     meeting_notes = models.TextField(blank=True, verbose_name="Notes de réunion")
     summary = models.TextField(blank=True, verbose_name="Résumé")
 
-    # PDF storage - files will be saved in media/reports/
     pdf_file = models.FileField(upload_to='reports/', null=True, blank=True, verbose_name="Fichier PDF")
 
-    # Flag to distinguish final vs intermediate reports
     is_final_report = models.BooleanField(default=False, verbose_name="Rapport final")
 
     generated_at = models.DateTimeField(auto_now_add=True, verbose_name="Généré le")
