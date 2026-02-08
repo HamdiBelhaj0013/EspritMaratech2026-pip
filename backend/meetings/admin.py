@@ -37,13 +37,11 @@ class MeetingAttendeeAdmin(admin.ModelAdmin):
     list_display = ('member', 'meeting', 'status', 'attendance_mode', 'special_role')
     list_filter = ('status', 'attendance_mode', 'meeting__meeting_type')
     search_fields = ('member__name', 'meeting__title', 'notes')
-    # Removed autocomplete_fields to fix error
 
 class MeetingReportAdmin(admin.ModelAdmin):
     list_display = ('title', 'meeting', 'created_by', 'created_at', 'is_approved')
     list_filter = ('is_approved', 'meeting__meeting_type')
     search_fields = ('title', 'summary', 'meeting__title')
-    # Removed autocomplete_fields to fix error
 
 class MeetingNotificationAdmin(admin.ModelAdmin):
     list_display = ('title', 'user', 'meeting', 'notification_type', 'is_sent', 'is_read')
