@@ -46,7 +46,6 @@ class DonorViewSet(viewsets.ViewSet):
         - Either directly through the association field
         - Or those that have transactions with projects from the user's association
         """
-        # Superusers can see all donors
         if self.request.user.is_superuser:
             queryset = Donor.objects.all()
         # Users with association can only see donors related to their association
@@ -56,7 +55,6 @@ class DonorViewSet(viewsets.ViewSet):
                 association=self.request.user.association
             ).values_list('id', flat=True)
 
-            # Use Q objects to combine the conditions in a single query
             queryset = Donor.objects.filter(
                 Q(association=self.request.user.association) |
                 Q(transactions__project__in=association_projects)
@@ -64,7 +62,6 @@ class DonorViewSet(viewsets.ViewSet):
         else:
             queryset = Donor.objects.none()
 
-        # Apply additional filters from query params
         is_anonymous = self.request.query_params.get('is_anonymous', None)
         if is_anonymous is not None:
             is_anonymous = is_anonymous.lower() == 'true'
@@ -85,7 +82,6 @@ class DonorViewSet(viewsets.ViewSet):
             is_active = is_active.lower() == 'true'
             queryset = queryset.filter(is_active=is_active)
 
-        # External donors (neither member nor internal)
         is_external = self.request.query_params.get('is_external', None)
         if is_external is not None:
             is_external = is_external.lower() == 'true'
@@ -1718,7 +1714,6 @@ class FinancialDashboardViewSet(viewsets.ViewSet):
                 print(f"Annual report period: {start_date} to {end_date}")
 
             elif report_type == 'custom':
-                # Custom date range
                 if not custom_start_date or not custom_end_date:
                     return Response(
                         {"error": "start_date and end_date are required for custom reports"},
@@ -1766,14 +1761,12 @@ class FinancialDashboardViewSet(viewsets.ViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Validate that start date is before end date
             if start_date > end_date:
                 return Response(
                     {"error": "Start date must be before end date"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Create the report
             report = FinancialReport.objects.create(
                 report_type=report_type,
                 title=title,
@@ -1786,13 +1779,11 @@ class FinancialDashboardViewSet(viewsets.ViewSet):
 
             print(f"Created report object with ID: {report.id}")
 
-            # Generate the report file
             try:
                 self._generate_report_file(report)
                 print(f"Report file generation completed successfully")
             except Exception as e:
                 print(f"Failed to generate report file: {str(e)}")
-                # Don't delete the report object, but add error note
                 report.notes += f"\nError generating report file: {str(e)}"
                 report.save()
                 return Response({
@@ -1811,6 +1802,3 @@ class FinancialDashboardViewSet(viewsets.ViewSet):
                 {"error": f"Failed to generate report: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-
