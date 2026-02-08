@@ -90,7 +90,6 @@ class Command(BaseCommand):
                 meeting_key = f"{meeting.start_date.year}-{meeting.start_date.month}"
                 existing_months.add(meeting_key)
 
-            # Create meetings for each month if they don't exist
             meetings_created = 0
 
             for i in range(months):
@@ -106,14 +105,12 @@ class Command(BaseCommand):
                     )
                     continue
 
-                # Skip dates in the past
                 if meeting_date < now:
                     self.stdout.write(
                         f"Skipping {meeting_date.strftime('%B %Y')} for {association.name} - date is in the past"
                     )
                     continue
 
-                # Create the meeting
                 meeting = Meeting(
                     title=f"Monthly Meeting - {meeting_date.strftime('%B %Y')}",
                     description=f"Regular monthly meeting for {association.name}",
